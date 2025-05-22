@@ -1,33 +1,50 @@
-Import-Module ActiveDirectory
+# Lista de nomes fictícios (30 nomes)
+$nomes = @(
+    "Ana Paula Ribeiro", "João Carlos Silva", "Mariana Alves Costa", "Lucas Henrique Lima", "Camila Souza Rocha",
+    "Rafael Monteiro", "Priscila Nogueira", "Bruno Fernandes", "Letícia Martins", "Vinícius Gomes",
+    "Larissa Carvalho", "Thiago Duarte", "Daniela Pires", "Gabriel Santana", "Aline Costa",
+    "Felipe Araújo", "Juliana Mendes", "Eduardo Barros", "Vanessa Tavares", "Ricardo Lima",
+    "Beatriz Neves", "André Campos", "Fernanda Melo", "Pedro Rezende", "Tatiane Cunha",
+    "Marcelo Teixeira", "Simone Braga", "Diego Farias", "Roberta Lima", "Igor Moreira"
+)
 
-# Lista de nomes e sobrenomes para gerar nomes aleatórios
-$firstNames = @("Lucas", "Mateus", "João", "Pedro", "Gabriel", "Ana", "Beatriz", "Mariana", "Juliana", "Fernanda")
-$lastNames = @("Silva", "Souza", "Oliveira", "Pereira", "Lima", "Gomes", "Ribeiro", "Martins", "Almeida", "Barbosa")
+# Grupos para distribuir os usuários (30 usuários ÷ 6 grupos = 5 por grupo)
+$grupos = @(
+    "pessoal", "pessoal", "pessoal", "pessoal", "pessoal",
+    "administrativo", "administrativo", "administrativo", "administrativo", "administrativo",
+    "fabricacao", "fabricacao", "fabricacao", "fabricacao", "fabricacao",
+    "logistica", "logistica", "logistica", "logistica", "logistica",
+    "equipamentos", "equipamentos", "equipamentos", "equipamentos", "equipamentos",
+    "ti", "ti", "ti", "ti", "ti"
+)
 
-# Unidade Organizacional (substitua pelo caminho correto)
-$ou = "OU=Usuarios,DC=seudominio,DC=com"
+# OU onde os usuários serão criados
+$OU = "OU=Usuarios,DC=exemplo,DC=local"  # Substitua pelo caminho da sua estrutura de AD
 
-# Criar usuários de matrícula 0001 até 0035
-for ($i = 1; $i -le 35; $i++) {
-    $matricula = "{0:D4}" -f $i
-    $firstName = Get-Random -InputObject $firstNames
-    $lastName = Get-Random -InputObject $lastNames
-    $fullName = "$firstName $lastName"
-    $username = "user$matricula"
-    $password = ConvertTo-SecureString "Senha@123" -AsPlainText -Force
+# Criar usuários e atribuir a 1 grupo cada
+for ($i = 0; $i -lt 30; $i++) {
+    $nome = $nomes[$i]
+    $matricula = "{0:D4}" -f ($i + 1)  # Matrículas: 0001 a 0030
+    $login = $matricula
+    $senha = ConvertTo-SecureString "SenhaTemp123!" -AsPlainText -Force
+    $grupo = $grupos[$i]
 
+    Write-Host "`nCriando usuário: $nome (Matrícula: $matricula) → Grupo: $grupo"
+
+    # Criar usuário
     New-ADUser `
-        -Name $fullName `
-        -GivenName $firstName `
-        -Surname $lastName `
-        -SamAccountName $username `
-        -UserPrincipalName "$username@seudominio.com" `
-        -AccountPassword $password `
-        -Path $ou `
+        -Name $nome `
+        -SamAccountName $login `
+        -UserPrincipalName "$login@exemplo.local" `
+        -GivenName ($nome.Split(" ")[0]) `
+        -Surname ($nome.Split(" ")[-1]) `
+        -AccountPassword $senha `
         -Enabled $true `
         -ChangePasswordAtLogon $true `
-        -Description "Usuário matrícula $matricula"
-        
-    Write-Host "Usuário $fullName criado com usuário $username"
+        -Path $OU
+
+    # Adicionar ao grupo
+    Add-ADGroupMember -Identity $grupo -Members $login
+    Write-Host " → Adicionado ao grupo: $grupo"
 }
 
