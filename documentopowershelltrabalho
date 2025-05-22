@@ -1,9 +1,9 @@
 Import-Module ActiveDirectory
 
 # Configurações do domínio e OU
-$dominio = "seudominio.local"
-$ouUsuarios = "OU=Usuarios,DC=seudominio,DC=local"
-$ouGrupos = "OU=Grupos,DC=seudominio,DC=local"
+$dominio = "techangels.com.br"
+$ouUsuarios = "OU=Usuarios,DC=techangels,DC=com,DC=br"
+$ouGrupos = "OU=Grupos,DC=techangels,DC=com,DC=br"
 
 # Lista dos usuários
 $usuarios = @(
