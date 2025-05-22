@@ -1,46 +1,33 @@
 Import-Module ActiveDirectory
 
-# Configurações
-$dominio = "techangels.com.br"
-$ouUsuarios = "OU=Usuarios,DC=techangels,DC=com,DC=br"
-$qtdUsuarios = 35
+# Lista de nomes e sobrenomes para gerar nomes aleatórios
+$firstNames = @("Lucas", "Mateus", "João", "Pedro", "Gabriel", "Ana", "Beatriz", "Mariana", "Juliana", "Fernanda")
+$lastNames = @("Silva", "Souza", "Oliveira", "Pereira", "Lima", "Gomes", "Ribeiro", "Martins", "Almeida", "Barbosa")
 
-# Listas de nomes e sobrenomes para gerar combinações aleatórias
-$primeirosNomes = @("Lucas", "Mariana", "Felipe", "Amanda", "Bruno", "Isabela", "Rafael", "Julia", "Thiago", "Camila", "Henrique", "Vanessa", "André", "Renata", "Fábio")
-$sobrenomes = @("Silva", "Souza", "Oliveira", "Costa", "Pereira", "Almeida", "Martins", "Lima", "Barbosa", "Ribeiro", "Torres", "Cunha", "Rezende", "Moreira", "Braga")
+# Unidade Organizacional (substitua pelo caminho correto)
+$ou = "OU=Usuarios,DC=seudominio,DC=com"
 
-# Criar os usuários
-for ($i = 1; $i -le $qtdUsuarios; $i++) {
+# Criar usuários de matrícula 0001 até 0035
+for ($i = 1; $i -le 35; $i++) {
     $matricula = "{0:D4}" -f $i
-    $samAccountName = "user" + $matricula
+    $firstName = Get-Random -InputObject $firstNames
+    $lastName = Get-Random -InputObject $lastNames
+    $fullName = "$firstName $lastName"
+    $username = "user$matricula"
+    $password = ConvertTo-SecureString "Senha@123" -AsPlainText -Force
 
-    # Nome aleatório
-    $nome = $primeirosNomes | Get-Random
-    $sobrenome = $sobrenomes | Get-Random
-    $nomeCompleto = "$nome $sobrenome"
-
-    # Senha padrão (altere se necessário)
-    $senha = ConvertTo-SecureString "SenhaTemp123!" -AsPlainText -Force
-
-    # Verifica se o usuário já existe
-    if (-not (Get-ADUser -Filter { SamAccountName -eq $samAccountName })) {
-        Write-Host "Criando usuário: $nomeCompleto ($samAccountName)"
-
-        New-ADUser `
-            -Name $nomeCompleto `
-            -SamAccountName $samAccountName `
-            -UserPrincipalName "$samAccountName@$dominio" `
-            -AccountPassword $senha `
-            -Enabled $true `
-            -PasswordNeverExpires $true `
-            -Path $ouUsuarios `
-            -DisplayName $nomeCompleto `
-            -GivenName $nome `
-            -Surname $sobrenome `
-            -Description "Criado automaticamente em $(Get-Date -Format 'dd/MM/yyyy')" `
-            -ChangePasswordAtLogon $true
-    } else {
-        Write-Host "Usuário $samAccountName já existe. Pulando..."
-    }
+    New-ADUser `
+        -Name $fullName `
+        -GivenName $firstName `
+        -Surname $lastName `
+        -SamAccountName $username `
+        -UserPrincipalName "$username@seudominio.com" `
+        -AccountPassword $password `
+        -Path $ou `
+        -Enabled $true `
+        -ChangePasswordAtLogon $true `
+        -Description "Usuário matrícula $matricula"
+        
+    Write-Host "Usuário $fullName criado com usuário $username"
 }
 
