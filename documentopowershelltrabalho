@@ -1,62 +1,92 @@
 Import-Module ActiveDirectory
 
-# Domínio e OUs
+# Configurações do domínio e OU
 $dominio = "seudominio.local"
 $ouUsuarios = "OU=Usuarios,DC=seudominio,DC=local"
 $ouGrupos = "OU=Grupos,DC=seudominio,DC=local"
 
-# Setores
-$setores = @("TI", "Equipamentos", "Logistica", "Producao", "Pessoal", "Administrativo")
+# Lista dos usuários
+$usuarios = @(
+    @{ID="0001"; Nome="Amanda Ribeiro"; Grupo="Pessoal"},
+    @{ID="0002"; Nome="Felipe Moura"; Grupo="Pessoal"},
+    @{ID="0003"; Nome="Carla Monteiro"; Grupo="Pessoal"},
+    @{ID="0004"; Nome="Jonas Andrade"; Grupo="Pessoal"},
+    @{ID="0005"; Nome="Letícia Souza"; Grupo="Pessoal"},
+    @{ID="0006"; Nome="Mariana Costa"; Grupo="Administrativo"},
+    @{ID="0007"; Nome="Vinícius Almeida"; Grupo="Administrativo"},
+    @{ID="0008"; Nome="Roberta Nunes"; Grupo="Administrativo"},
+    @{ID="0009"; Nome="Diego Fernandes"; Grupo="Administrativo"},
+    @{ID="0010"; Nome="Bruna Lima"; Grupo="Administrativo"},
+    @{ID="0011"; Nome="Ricardo Martins"; Grupo="Producao"},
+    @{ID="0012"; Nome="Priscila Duarte"; Grupo="Producao"},
+    @{ID="0013"; Nome="Eduardo Teixeira"; Grupo="Producao"},
+    @{ID="0014"; Nome="Fernanda Lopes"; Grupo="Producao"},
+    @{ID="0015"; Nome="Bruno Carvalho"; Grupo="Producao"},
+    @{ID="0016"; Nome="Daniel Barros"; Grupo="Fabricacao"},
+    @{ID="0017"; Nome="Aline Ferreira"; Grupo="Fabricacao"},
+    @{ID="0018"; Nome="Tiago Rocha"; Grupo="Fabricacao"},
+    @{ID="0019"; Nome="Luana Dias"; Grupo="Fabricacao"},
+    @{ID="0020"; Nome="Marcos Pinto"; Grupo="Fabricacao"},
+    @{ID="0021"; Nome="Rafael Mendes"; Grupo="Logistica"},
+    @{ID="0022"; Nome="Tatiane Silva"; Grupo="Logistica"},
+    @{ID="0023"; Nome="Gustavo Lima"; Grupo="Logistica"},
+    @{ID="0024"; Nome="Isabel Cardoso"; Grupo="Logistica"},
+    @{ID="0025"; Nome="Jorge Maciel"; Grupo="Logistica"},
+    @{ID="0026"; Nome="Henrique Pires"; Grupo="Equipamentos"},
+    @{ID="0027"; Nome="Vanessa Torres"; Grupo="Equipamentos"},
+    @{ID="0028"; Nome="André Cunha"; Grupo="Equipamentos"},
+    @{ID="0029"; Nome="Camila Rezende"; Grupo="Equipamentos"},
+    @{ID="0030"; Nome="Fábio Moreira"; Grupo="Equipamentos"},
+    @{ID="0031"; Nome="Lucas Martins"; Grupo="TI"},
+    @{ID="0032"; Nome="Renata Oliveira"; Grupo="TI"},
+    @{ID="0033"; Nome="Igor Santiago"; Grupo="TI"},
+    @{ID="0034"; Nome="Juliana Azevedo"; Grupo="TI"},
+    @{ID="0035"; Nome="Matheus Braga"; Grupo="TI"}
+)
 
-# Listas simples de nomes para gerar nomes aleatórios
-$primeirosNomes = @("Lucas", "Mariana", "Felipe", "Amanda", "Bruno", "Isabela", "Rafael", "Julia", "Thiago", "Camila")
-$sobrenomes = @("Silva", "Souza", "Oliveira", "Costa", "Pereira", "Almeida", "Martins", "Lima", "Barbosa", "Ribeiro")
+# Criação dos grupos caso não existam
+$gruposExistentes = Get-ADGroup -Filter * | Select-Object -ExpandProperty Name
+$gruposNecessarios = $usuarios | Select-Object -ExpandProperty Grupo -Unique
 
-# Criar grupos se não existirem
-foreach ($grupo in $setores) {
-    if (-not (Get-ADGroup -Filter { Name -eq $grupo })) {
+foreach ($grupo in $gruposNecessarios) {
+    if ($gruposExistentes -notcontains $grupo) {
         Write-Host "Criando grupo: $grupo"
         New-ADGroup -Name $grupo -GroupScope Global -GroupCategory Security -Path $ouGrupos
     }
 }
 
-$matricula = 1
+# Criação dos usuários e adição aos grupos
+foreach ($usuario in $usuarios) {
+    $samAccountName = "user" + $usuario.ID
+    $nomeCompleto = $usuario.Nome
+    $grupo = $usuario.Grupo
+    $senha = ConvertTo-SecureString "SenhaTemp123!" -AsPlainText -Force
 
-foreach ($setor in $setores) {
-    for ($i=1; $i -le 5; $i++) {
-        $samAccountName = "user" + "{0:D4}" -f $matricula
+    # Verifica se usuário já existe
+    if (-not (Get-ADUser -Filter { SamAccountName -eq $samAccountName })) {
+        Write-Host "Criando usuário: $nomeCompleto ($samAccountName)"
+        $nomeSplit = $nomeCompleto -split " "
+        $givenName = $nomeSplit[0]
+        $surname = $nomeSplit[-1]
 
-        # Gerar nome aleatório
-        $nome = $primeirosNomes | Get-Random
-        $sobrenome = $sobrenomes | Get-Random
-        $nomeCompleto = "$nome $sobrenome"
-
-        $senha = ConvertTo-SecureString "SenhaTemp123!" -AsPlainText -Force
-
-        # Cria usuário se não existir
-        if (-not (Get-ADUser -Filter { SamAccountName -eq $samAccountName })) {
-            Write-Host "Criando usuário: $nomeCompleto ($samAccountName) no setor $setor"
-
-            New-ADUser `
-                -Name $nomeCompleto `
-                -SamAccountName $samAccountName `
-                -UserPrincipalName "$samAccountName@$dominio" `
-                -AccountPassword $senha `
-                -Enabled $true `
-                -PasswordNeverExpires $true `
-                -Path $ouUsuarios `
-                -DisplayName $nomeCompleto `
-                -GivenName $nome `
-                -Surname $sobrenome `
-                -Description $setor `
-                -ChangePasswordAtLogon $true
-        }
-
-        # Adiciona usuário ao grupo do setor
-        Add-ADGroupMember -Identity $setor -Members $samAccountName
-        Write-Host "Adicionado $samAccountName ao grupo $setor"
-
-        $matricula++
+        New-ADUser `
+            -Name $nomeCompleto `
+            -SamAccountName $samAccountName `
+            -UserPrincipalName "$samAccountName@$dominio" `
+            -AccountPassword $senha `
+            -Enabled $true `
+            -PasswordNeverExpires $true `
+            -Path $ouUsuarios `
+            -DisplayName $nomeCompleto `
+            -GivenName $givenName `
+            -Surname $surname `
+            -Description $grupo `
+            -ChangePasswordAtLogon $true
+    } else {
+        Write-Host "Usuário $samAccountName já existe, pulando criação."
     }
-}
 
+    # Adiciona usuário ao grupo
+    Write-Host "Adicionando $samAccountName ao grupo $grupo"
+    Add-ADGroupMember -Identity $grupo -Members $samAccountName
+}
