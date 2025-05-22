@@ -1,0 +1,82 @@
+Import-Module ActiveDirectory
+
+$usuarios = @(
+    @{ID="0001"; Nome="Amanda Ribeiro"; Grupo="Pessoal"},
+    @{ID="0002"; Nome="Felipe Moura"; Grupo="Pessoal"},
+    @{ID="0003"; Nome="Carla Monteiro"; Grupo="Pessoal"},
+    @{ID="0004"; Nome="Jonas Andrade"; Grupo="Pessoal"},
+    @{ID="0005"; Nome="Letícia Souza"; Grupo="Pessoal"},
+
+    @{ID="0006"; Nome="Mariana Costa"; Grupo="Administrativo"},
+    @{ID="0007"; Nome="Vinícius Almeida"; Grupo="Administrativo"},
+    @{ID="0008"; Nome="Roberta Nunes"; Grupo="Administrativo"},
+    @{ID="0009"; Nome="Diego Fernandes"; Grupo="Administrativo"},
+    @{ID="0010"; Nome="Bruna Lima"; Grupo="Administrativo"},
+
+    @{ID="0011"; Nome="Ricardo Martins"; Grupo="Producao"},
+    @{ID="0012"; Nome="Priscila Duarte"; Grupo="Producao"},
+    @{ID="0013"; Nome="Eduardo Teixeira"; Grupo="Producao"},
+    @{ID="0014"; Nome="Fernanda Lopes"; Grupo="Producao"},
+    @{ID="0015"; Nome="Bruno Carvalho"; Grupo="Producao"},
+
+    @{ID="0016"; Nome="Daniel Barros"; Grupo="Fabricacao"},
+    @{ID="0017"; Nome="Aline Ferreira"; Grupo="Fabricacao"},
+    @{ID="0018"; Nome="Tiago Rocha"; Grupo="Fabricacao"},
+    @{ID="0019"; Nome="Luana Dias"; Grupo="Fabricacao"},
+    @{ID="0020"; Nome="Marcos Pinto"; Grupo="Fabricacao"},
+
+    @{ID="0021"; Nome="Rafael Mendes"; Grupo="Logistica"},
+    @{ID="0022"; Nome="Tatiane Silva"; Grupo="Logistica"},
+    @{ID="0023"; Nome="Gustavo Lima"; Grupo="Logistica"},
+    @{ID="0024"; Nome="Isabel Cardoso"; Grupo="Logistica"},
+    @{ID="0025"; Nome="Jorge Maciel"; Grupo="Logistica"},
+
+    @{ID="0026"; Nome="Henrique Pires"; Grupo="Equipamentos"},
+    @{ID="0027"; Nome="Vanessa Torres"; Grupo="Equipamentos"},
+    @{ID="0028"; Nome="André Cunha"; Grupo="Equipamentos"},
+    @{ID="0029"; Nome="Camila Rezende"; Grupo="Equipamentos"},
+    @{ID="0030"; Nome="Fábio Moreira"; Grupo="Equipamentos"},
+
+    @{ID="0031"; Nome="Lucas Martins"; Grupo="TI"},
+    @{ID="0032"; Nome="Renata Oliveira"; Grupo="TI"},
+    @{ID="0033"; Nome="Igor Santiago"; Grupo="TI"},
+    @{ID="0034"; Nome="Juliana Azevedo"; Grupo="TI"},
+    @{ID="0035"; Nome="Matheus Braga"; Grupo="TI"}
+)
+
+foreach ($usuario in $usuarios) {
+    $samAccountName = "user" + $usuario.ID
+    $nomeCompleto = $usuario.Nome
+    $grupoAD = $usuario.Grupo
+    $senha = ConvertTo-SecureString "SenhaTemp123!" -AsPlainText -Force
+
+    # Criação do usuário no AD
+    New-ADUser `
+        -Name $nomeCompleto `
+        -SamAccountName $samAccountName `
+        -UserPrincipalName "$samAccountName@seudominio.local" `
+        -AccountPassword $senha `
+        -Enabled $true `
+        -PasswordNeverExpires $true `
+        -Path "OU=Usuarios,DC=seudominio,DC=local" `
+        -DisplayName $nomeCompleto `
+        -GivenName ($nomeCompleto.Split(" ")[0]) `
+        -Surname ($nomeCompleto.Split(" ")[-1]) `
+        -Description $grupoAD `
+        -ChangePasswordAtLogon $true
+
+    # Adiciona o usuário ao grupo do setor
+    Add-ADGroupMember -Identity $grupoAD -Members $samAccountName
+}
+
+
+
+Script de checagem
+
+$grupos = "Pessoal", "Administrativo", "Producao", "Fabricacao", "Logistica", "Equipamentos", "TI"
+foreach ($g in $grupos) {
+    if (-not (Get-ADGroup -Filter "Name -eq '$g'")) {
+        New-ADGroup -Name $g -GroupScope Global -GroupCategory Security -Path "OU=Grupos,DC=seudominio,DC=local"
+    }
+}
+
