@@ -1,4 +1,7 @@
-# Lista de nomes fictícios (30 nomes)
+# Importa o módulo do Active Directory (necessário no AD DS)
+Import-Module ActiveDirectory
+
+# Lista de 30 nomes fictícios
 $nomes = @(
     "Ana Paula Ribeiro", "João Carlos Silva", "Mariana Alves Costa", "Lucas Henrique Lima", "Camila Souza Rocha",
     "Rafael Monteiro", "Priscila Nogueira", "Bruno Fernandes", "Letícia Martins", "Vinícius Gomes",
@@ -8,7 +11,7 @@ $nomes = @(
     "Marcelo Teixeira", "Simone Braga", "Diego Farias", "Roberta Lima", "Igor Moreira"
 )
 
-# Grupos para distribuir os usuários (30 usuários ÷ 6 grupos = 5 por grupo)
+# Grupos do AD (5 usuários por grupo)
 $grupos = @(
     "pessoal", "pessoal", "pessoal", "pessoal", "pessoal",
     "administrativo", "administrativo", "administrativo", "administrativo", "administrativo",
@@ -18,33 +21,36 @@ $grupos = @(
     "ti", "ti", "ti", "ti", "ti"
 )
 
-# OU onde os usuários serão criados
-$OU = "OU=Usuarios,DC=exemplo,DC=local"  # Substitua pelo caminho da sua estrutura de AD
+# OU (Unidade Organizacional) onde os usuários serão criados
+$OU = "OU=Usuarios,DC=exemplo,DC=local"  # <<< Substitua pelo caminho da sua OU
 
-# Criar usuários e atribuir a 1 grupo cada
+# Senha padrão para os usuários (exige troca no primeiro login)
+$senhaSegura = ConvertTo-SecureString "SenhaTemp123!" -AsPlainText -Force
+
+# Loop para criar os 30 usuários e adicionar em 1 grupo cada
 for ($i = 0; $i -lt 30; $i++) {
     $nome = $nomes[$i]
-    $matricula = "{0:D4}" -f ($i + 1)  # Matrículas: 0001 a 0030
-    $login = $matricula
-    $senha = ConvertTo-SecureString "SenhaTemp123!" -AsPlainText -Force
+    $matricula = "{0:D4}" -f ($i + 1)  # Gera 0001, 0002, ..., 0030
+    $samAccountName = $matricula
+    $userPrincipalName = "$matricula@exemplo.local"  # <<< Substitua pelo domínio real
     $grupo = $grupos[$i]
 
-    Write-Host "`nCriando usuário: $nome (Matrícula: $matricula) → Grupo: $grupo"
+    Write-Host "`nCriando $nome | Matrícula: $matricula | Grupo: $grupo"
 
-    # Criar usuário
+    # Criar o usuário no AD DS
     New-ADUser `
         -Name $nome `
-        -SamAccountName $login `
-        -UserPrincipalName "$login@exemplo.local" `
+        -SamAccountName $samAccountName `
+        -UserPrincipalName $userPrincipalName `
         -GivenName ($nome.Split(" ")[0]) `
         -Surname ($nome.Split(" ")[-1]) `
-        -AccountPassword $senha `
+        -AccountPassword $senhaSegura `
         -Enabled $true `
         -ChangePasswordAtLogon $true `
         -Path $OU
 
-    # Adicionar ao grupo
-    Add-ADGroupMember -Identity $grupo -Members $login
+    # Adicionar o usuário ao grupo
+    Add-ADGroupMember -Identity $grupo -Members $samAccountName
     Write-Host " → Adicionado ao grupo: $grupo"
 }
 
