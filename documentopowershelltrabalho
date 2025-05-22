@@ -1,56 +1,33 @@
-# Importa o módulo do Active Directory (necessário no AD DS)
 Import-Module ActiveDirectory
 
-# Lista de 30 nomes fictícios
-$nomes = @(
-    "Ana Paula Ribeiro", "João Carlos Silva", "Mariana Alves Costa", "Lucas Henrique Lima", "Camila Souza Rocha",
-    "Rafael Monteiro", "Priscila Nogueira", "Bruno Fernandes", "Letícia Martins", "Vinícius Gomes",
-    "Larissa Carvalho", "Thiago Duarte", "Daniela Pires", "Gabriel Santana", "Aline Costa",
-    "Felipe Araújo", "Juliana Mendes", "Eduardo Barros", "Vanessa Tavares", "Ricardo Lima",
-    "Beatriz Neves", "André Campos", "Fernanda Melo", "Pedro Rezende", "Tatiane Cunha",
-    "Marcelo Teixeira", "Simone Braga", "Diego Farias", "Roberta Lima", "Igor Moreira"
-)
+# Lista de nomes e sobrenomes para gerar nomes aleatórios
+$firstNames = @("Lucas", "Mateus", "João", "Pedro", "Gabriel", "Ana", "Beatriz", "Mariana", "Juliana", "Fernanda")
+$lastNames = @("Silva", "Souza", "Oliveira", "Pereira", "Lima", "Gomes", "Ribeiro", "Martins", "Almeida", "Barbosa")
 
-# Grupos do AD (5 usuários por grupo)
-$grupos = @(
-    "pessoal", "pessoal", "pessoal", "pessoal", "pessoal",
-    "administrativo", "administrativo", "administrativo", "administrativo", "administrativo",
-    "fabricacao", "fabricacao", "fabricacao", "fabricacao", "fabricacao",
-    "logistica", "logistica", "logistica", "logistica", "logistica",
-    "equipamentos", "equipamentos", "equipamentos", "equipamentos", "equipamentos",
-    "ti", "ti", "ti", "ti", "ti"
-)
+# Unidade Organizacional (substitua pelo caminho correto)
+$ou = "OU=Usuarios,DC=seudominio,DC=com"
 
-# OU (Unidade Organizacional) onde os usuários serão criados
-$OU = "OU=Usuarios,DC=exemplo,DC=local"  # <<< Substitua pelo caminho da sua OU
+# Criar usuários de matrícula 0001 até 0035
+for ($i = 1; $i -le 35; $i++) {
+    $matricula = "{0:D4}" -f $i
+    $firstName = Get-Random -InputObject $firstNames
+    $lastName = Get-Random -InputObject $lastNames
+    $fullName = "$firstName $lastName"
+    $username = "user$matricula"
+    $password = ConvertTo-SecureString "Senha@123" -AsPlainText -Force
 
-# Senha padrão para os usuários (exige troca no primeiro login)
-$senhaSegura = ConvertTo-SecureString "SenhaTemp123!" -AsPlainText -Force
-
-# Loop para criar os 30 usuários e adicionar em 1 grupo cada
-for ($i = 0; $i -lt 30; $i++) {
-    $nome = $nomes[$i]
-    $matricula = "{0:D4}" -f ($i + 1)  # Gera 0001, 0002, ..., 0030
-    $samAccountName = $matricula
-    $userPrincipalName = "$matricula@exemplo.local"  # <<< Substitua pelo domínio real
-    $grupo = $grupos[$i]
-
-    Write-Host "`nCriando $nome | Matrícula: $matricula | Grupo: $grupo"
-
-    # Criar o usuário no AD DS
     New-ADUser `
-        -Name $nome `
-        -SamAccountName $samAccountName `
-        -UserPrincipalName $userPrincipalName `
-        -GivenName ($nome.Split(" ")[0]) `
-        -Surname ($nome.Split(" ")[-1]) `
-        -AccountPassword $senhaSegura `
+        -Name $fullName `
+        -GivenName $firstName `
+        -Surname $lastName `
+        -SamAccountName $username `
+        -UserPrincipalName "$username@seudominio.com" `
+        -AccountPassword $password `
+        -Path $ou `
         -Enabled $true `
         -ChangePasswordAtLogon $true `
-        -Path $OU
-
-    # Adicionar o usuário ao grupo
-    Add-ADGroupMember -Identity $grupo -Members $samAccountName
-    Write-Host " → Adicionado ao grupo: $grupo"
+        -Description "Usuário matrícula $matricula"
+        
+    Write-Host "Usuário $fullName criado com usuário $username"
 }
 
