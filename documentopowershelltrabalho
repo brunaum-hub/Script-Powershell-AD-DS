@@ -1,73 +1,30 @@
 Import-Module ActiveDirectory
 
-# Configurações do domínio e OU
+# Configurações
 $dominio = "techangels.com.br"
 $ouUsuarios = "OU=Usuarios,DC=techangels,DC=com,DC=br"
-$ouGrupos = "OU=Grupos,DC=techangels,DC=com,DC=br"
+$qtdUsuarios = 35
 
-# Lista dos usuários
-$usuarios = @(
-    @{ID="0001"; Nome="Amanda Ribeiro"; Grupo="Pessoal"},
-    @{ID="0002"; Nome="Felipe Moura"; Grupo="Pessoal"},
-    @{ID="0003"; Nome="Carla Monteiro"; Grupo="Pessoal"},
-    @{ID="0004"; Nome="Jonas Andrade"; Grupo="Pessoal"},
-    @{ID="0005"; Nome="Letícia Souza"; Grupo="Pessoal"},
-    @{ID="0006"; Nome="Mariana Costa"; Grupo="Administrativo"},
-    @{ID="0007"; Nome="Vinícius Almeida"; Grupo="Administrativo"},
-    @{ID="0008"; Nome="Roberta Nunes"; Grupo="Administrativo"},
-    @{ID="0009"; Nome="Diego Fernandes"; Grupo="Administrativo"},
-    @{ID="0010"; Nome="Bruna Lima"; Grupo="Administrativo"},
-    @{ID="0011"; Nome="Ricardo Martins"; Grupo="Producao"},
-    @{ID="0012"; Nome="Priscila Duarte"; Grupo="Producao"},
-    @{ID="0013"; Nome="Eduardo Teixeira"; Grupo="Producao"},
-    @{ID="0014"; Nome="Fernanda Lopes"; Grupo="Producao"},
-    @{ID="0015"; Nome="Bruno Carvalho"; Grupo="Producao"},
-    @{ID="0016"; Nome="Daniel Barros"; Grupo="Fabricacao"},
-    @{ID="0017"; Nome="Aline Ferreira"; Grupo="Fabricacao"},
-    @{ID="0018"; Nome="Tiago Rocha"; Grupo="Fabricacao"},
-    @{ID="0019"; Nome="Luana Dias"; Grupo="Fabricacao"},
-    @{ID="0020"; Nome="Marcos Pinto"; Grupo="Fabricacao"},
-    @{ID="0021"; Nome="Rafael Mendes"; Grupo="Logistica"},
-    @{ID="0022"; Nome="Tatiane Silva"; Grupo="Logistica"},
-    @{ID="0023"; Nome="Gustavo Lima"; Grupo="Logistica"},
-    @{ID="0024"; Nome="Isabel Cardoso"; Grupo="Logistica"},
-    @{ID="0025"; Nome="Jorge Maciel"; Grupo="Logistica"},
-    @{ID="0026"; Nome="Henrique Pires"; Grupo="Equipamentos"},
-    @{ID="0027"; Nome="Vanessa Torres"; Grupo="Equipamentos"},
-    @{ID="0028"; Nome="André Cunha"; Grupo="Equipamentos"},
-    @{ID="0029"; Nome="Camila Rezende"; Grupo="Equipamentos"},
-    @{ID="0030"; Nome="Fábio Moreira"; Grupo="Equipamentos"},
-    @{ID="0031"; Nome="Lucas Martins"; Grupo="TI"},
-    @{ID="0032"; Nome="Renata Oliveira"; Grupo="TI"},
-    @{ID="0033"; Nome="Igor Santiago"; Grupo="TI"},
-    @{ID="0034"; Nome="Juliana Azevedo"; Grupo="TI"},
-    @{ID="0035"; Nome="Matheus Braga"; Grupo="TI"}
-)
+# Listas de nomes e sobrenomes para gerar combinações aleatórias
+$primeirosNomes = @("Lucas", "Mariana", "Felipe", "Amanda", "Bruno", "Isabela", "Rafael", "Julia", "Thiago", "Camila", "Henrique", "Vanessa", "André", "Renata", "Fábio")
+$sobrenomes = @("Silva", "Souza", "Oliveira", "Costa", "Pereira", "Almeida", "Martins", "Lima", "Barbosa", "Ribeiro", "Torres", "Cunha", "Rezende", "Moreira", "Braga")
 
-# Criação dos grupos caso não existam
-$gruposExistentes = Get-ADGroup -Filter * | Select-Object -ExpandProperty Name
-$gruposNecessarios = $usuarios | Select-Object -ExpandProperty Grupo -Unique
+# Criar os usuários
+for ($i = 1; $i -le $qtdUsuarios; $i++) {
+    $matricula = "{0:D4}" -f $i
+    $samAccountName = "user" + $matricula
 
-foreach ($grupo in $gruposNecessarios) {
-    if ($gruposExistentes -notcontains $grupo) {
-        Write-Host "Criando grupo: $grupo"
-        New-ADGroup -Name $grupo -GroupScope Global -GroupCategory Security -Path $ouGrupos
-    }
-}
+    # Nome aleatório
+    $nome = $primeirosNomes | Get-Random
+    $sobrenome = $sobrenomes | Get-Random
+    $nomeCompleto = "$nome $sobrenome"
 
-# Criação dos usuários e adição aos grupos
-foreach ($usuario in $usuarios) {
-    $samAccountName = "user" + $usuario.ID
-    $nomeCompleto = $usuario.Nome
-    $grupo = $usuario.Grupo
+    # Senha padrão (altere se necessário)
     $senha = ConvertTo-SecureString "SenhaTemp123!" -AsPlainText -Force
 
-    # Verifica se usuário já existe
+    # Verifica se o usuário já existe
     if (-not (Get-ADUser -Filter { SamAccountName -eq $samAccountName })) {
         Write-Host "Criando usuário: $nomeCompleto ($samAccountName)"
-        $nomeSplit = $nomeCompleto -split " "
-        $givenName = $nomeSplit[0]
-        $surname = $nomeSplit[-1]
 
         New-ADUser `
             -Name $nomeCompleto `
@@ -78,21 +35,12 @@ foreach ($usuario in $usuarios) {
             -PasswordNeverExpires $true `
             -Path $ouUsuarios `
             -DisplayName $nomeCompleto `
-            -GivenName $givenName `
-            -Surname $surname `
-            -Description $grupo `
+            -GivenName $nome `
+            -Surname $sobrenome `
+            -Description "Criado automaticamente em $(Get-Date -Format 'dd/MM/yyyy')" `
             -ChangePasswordAtLogon $true
     } else {
-        Write-Host "Usuário $samAccountName já existe, pulando criação."
-    }
-
-    # Adiciona usuário ao grupo se não estiver nele
-    $membroNoGrupo = Get-ADGroupMember -Identity $grupo -Recursive | Where-Object { $_.SamAccountName -eq $samAccountName }
-    if (-not $membroNoGrupo) {
-        Write-Host "Adicionando $samAccountName ao grupo $grupo"
-        Add-ADGroupMember -Identity $grupo -Members $samAccountName
-    } else {
-        Write-Host "$samAccountName já está no grupo $grupo"
+        Write-Host "Usuário $samAccountName já existe. Pulando..."
     }
 }
 
