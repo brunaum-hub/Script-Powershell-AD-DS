@@ -86,7 +86,13 @@ foreach ($usuario in $usuarios) {
         Write-Host "Usuário $samAccountName já existe, pulando criação."
     }
 
-    # Adiciona usuário ao grupo
-    Write-Host "Adicionando $samAccountName ao grupo $grupo"
-    Add-ADGroupMember -Identity $grupo -Members $samAccountName
+    # Adiciona usuário ao grupo se não estiver nele
+    $membroNoGrupo = Get-ADGroupMember -Identity $grupo -Recursive | Where-Object { $_.SamAccountName -eq $samAccountName }
+    if (-not $membroNoGrupo) {
+        Write-Host "Adicionando $samAccountName ao grupo $grupo"
+        Add-ADGroupMember -Identity $grupo -Members $samAccountName
+    } else {
+        Write-Host "$samAccountName já está no grupo $grupo"
+    }
 }
+
